@@ -248,10 +248,10 @@ class EdgeIndexMock final : public arangodb::Index {
     return {};  // ok
   }
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference,
-                                            size_t itemsInIndex) const override {
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference,
+                                             size_t itemsInIndex) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
     return matcher.matchOne(this, node, reference, itemsInIndex);
   }
@@ -980,7 +980,9 @@ arangodb::Result StorageEngineMock::changeView(TRI_vocbase_t& vocbase,
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.properties(builder, true, true);
+  view.properties(builder, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed,
+                               arangodb::LogicalDataSource::Serialize::ForPersistence));
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
   return {};
@@ -1063,7 +1065,9 @@ arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_c
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.properties(builder, true, true);
+  view.properties(builder, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed,
+                               arangodb::LogicalDataSource::Serialize::ForPersistence));
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 

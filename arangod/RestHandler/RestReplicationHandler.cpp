@@ -244,6 +244,15 @@ RestStatus RestReplicationHandler::execute() {
       if (isCoordinatorError()) {
         return RestStatus::DONE;
       }
+      // track the number of parallel invocations of the tailing API
+      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      // this may throw when too many threads are going into tailing
+      rf->trackTailingStart();
+      
+      auto guard = scopeGuard([rf]() {
+        rf->trackTailingEnd();
+      });
+      
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
       if (type != rest::RequestType::GET) {
@@ -717,10 +726,10 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   LogicalView::enumerate(_vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
     if (view) {
       resultBuilder.openObject();
-      view->properties(resultBuilder, true,
-                       false);  // details, !forPersistence because on
-                                // restore any datasource ids will differ,
-                                // so need an end-user representation
+      view->properties(resultBuilder, LogicalDataSource::makeFlags(
+                                          LogicalDataSource::Serialize::Detailed));
+      // details, !forPersistence because on restore any datasource ids will
+      // differ, so need an end-user representation
       resultBuilder.close();
     }
 
